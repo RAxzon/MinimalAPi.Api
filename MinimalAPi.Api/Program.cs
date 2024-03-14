@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Models.Data;
 using Models.Data.DataContext;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -26,33 +27,55 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseCors("AllowAll");
-
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+app.UseCors("AllowAll");
 
-app.MapGet("/weatherforecast", () =>
+app.MapGet("/api/courses", async (StudentDbContext context) => {
+    return await context.Courses.ToListAsync();
+});
+
+app.MapGet("/api/courses/{id}", async (StudentDbContext context, int id) =>
 {
-    var forecast = Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
+    return await context.Courses
+    .FindAsync(id) is Course course ? Results.Ok() : Results.NotFound();
+});
+
+app.MapPost("/api/courses", async (StudentDbContext context, Course course) =>
+{
+    await context.AddAsync(course);
+    await context.SaveChangesAsync();
+
+    return Results.Created($"/api/courses/{course.Id}", course);
+});
+
+app.MapPut("/api/courses/{id}", async (StudentDbContext context, Course course, int id) =>
+{
+    var record = await context.Courses.FindAsync(id);
+
+    if(record == null) return Results.NotFound();
+
+    record.Title = course.Title;
+    record.Modified = DateTime.Now;
+    record.Credits = course.Credits;
+
+    context.Update(record);
+    await context.SaveChangesAsync();
+
+    return Results.NoContent();
+});
+
+app.MapDelete("/api/courses/{id}", async (StudentDbContext context, int id) =>
+{
+    var record = await context.Courses.FindAsync(id);
+
+    if (record == null) return Results.NotFound();
+
+    context.Remove(record);
+    await context.SaveChangesAsync();
+
+    return Results.NoContent();
+
+});
 
 app.Run();
-
-internal record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

@@ -16,9 +16,9 @@ namespace Models.Data.DataContext
             builder.ApplyConfiguration(new UserRoleConfig());
         }
 
-        DbSet<Course> Courses { get; set; }
-        DbSet<Student> Students { get; set; }
-        DbSet<Enrollment> Enrollments { get; set; }
+        public DbSet<Course> Courses { get; set; }
+        public DbSet<Student> Students { get; set; }
+        public DbSet<Enrollment> Enrollments { get; set; }
 
     }
 }
