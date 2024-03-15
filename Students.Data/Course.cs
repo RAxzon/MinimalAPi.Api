@@ -1,6 +1,4 @@
-﻿using Students.Data;
-
-namespace Models.Data
+﻿namespace Models.Data
 {
     public class Course : BaseEntity
     {

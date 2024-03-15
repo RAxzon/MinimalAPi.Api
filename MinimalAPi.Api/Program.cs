@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using Models.Data;
+using MinimalAPi.Api.Configurations;
 using Models.Data.DataContext;
 using MinimalAPi.Api.Endpoints;
 
@@ -14,6 +14,7 @@ builder.Services.AddDbContext<StudentDbContext>(opt => {
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddAutoMapper(typeof(MapperConfig));
 builder.Services.AddCors(opt =>
 {
     opt.AddPolicy("AllowAll", p => p.AllowAnyHeader().AllowAnyOrigin().AllowAnyMethod());
@@ -32,10 +33,9 @@ app.UseHttpsRedirection();
 
 app.UseCors("AllowAll");
 
-
+// Endpoints
 app.MapStudentEndpoints();
 app.MapEnrollmentEndpoints();
-
 app.MapCourseEndpoints();
 
 app.Run();

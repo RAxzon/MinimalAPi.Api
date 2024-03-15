@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using AutoMapper;
+using Microsoft.EntityFrameworkCore;
+using MinimalAPi.Api.DTOs.Enrollment;
 using Models.Data;
 using Models.Data.DataContext;
 namespace MinimalAPi.Api.Endpoints;
@@ -9,20 +11,21 @@ public static class EnrollmentEndpoints
     {
         var group = routes.MapGroup("/api/Enrollment").WithTags(nameof(Enrollment));
 
-        group.MapGet("/", async (StudentDbContext db) =>
-        {
-            return await db.Enrollments.ToListAsync();
-        })
+        group.MapGet("/", async (StudentDbContext db, IMapper mapper) =>
+            {
+                var enrollments = await db.Enrollments.ToListAsync();
+                return mapper.Map<List<EnrollmentDto>>(enrollments);
+            })
         .WithName("GetAllEnrollments")
         .WithOpenApi()
-        .Produces<List<Enrollment>>();
+        .Produces<List<EnrollmentDto>>();
 
-        group.MapGet("/{id}", async (int id, StudentDbContext db) =>
+        group.MapGet("/{id}", async (int id, StudentDbContext db, IMapper mapper) =>
         {
             return await db.Enrollments.AsNoTracking()
-                .FirstOrDefaultAsync(model => model.Id == id)
-                is Enrollment model
-                    ? Results.Ok(model)
+                .FirstOrDefaultAsync(enrollment => enrollment.Id == id)
+                is Enrollment enrollment
+                    ? Results.Ok(mapper.Map<EnrollmentDto>(enrollment))
                     : Results.NotFound();
         })
         .WithName("GetEnrollmentById")
@@ -30,8 +33,9 @@ public static class EnrollmentEndpoints
         .Produces<Enrollment>()
         .Produces(StatusCodes.Status404NotFound);
 
-        group.MapPost("/", async (Enrollment enrollment, StudentDbContext db) =>
+        group.MapPost("/", async (EnrollmentCreateDto enrollmentDto, StudentDbContext db, IMapper mapper) =>
             {
+                var enrollment = mapper.Map<Enrollment>(enrollmentDto);
                 db.Enrollments.Add(enrollment);
                 await db.SaveChangesAsync();
                 return Results.Created($"/api/Enrollment/{enrollment.Id}", enrollment);
@@ -47,11 +51,7 @@ public static class EnrollmentEndpoints
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(m => m.CourseId, enrollment.CourseId)
                     .SetProperty(m => m.StudentID, enrollment.StudentID)
-                    .SetProperty(m => m.Id, enrollment.Id)
-                    .SetProperty(m => m.Created, enrollment.Created)
-                    .SetProperty(m => m.CreatedBy, enrollment.CreatedBy)
-                    .SetProperty(m => m.Modified, enrollment.Modified)
-                    .SetProperty(m => m.ModifiedBy, enrollment.ModifiedBy)
+                    .SetProperty(m => m.Modified, DateTime.Now)
                     );
             return affected == 1 ? Results.Ok() : Results.NotFound();
         })

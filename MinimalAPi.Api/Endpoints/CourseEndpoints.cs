@@ -1,4 +1,6 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using AutoMapper;
+using Microsoft.EntityFrameworkCore;
+using MinimalAPi.Api.DTOs.Course;
 using Models.Data;
 using Models.Data.DataContext;
 namespace MinimalAPi.Api.Endpoints;
@@ -9,29 +11,32 @@ public static class CourseEndpoints
     {
         var group = routes.MapGroup("/api/Course").WithTags(nameof(Course));
 
-        group.MapGet("/", async (StudentDbContext db) =>
+        group.MapGet("/", async (StudentDbContext db, IMapper mapper) =>
         {
-            return await db.Courses.ToListAsync();
+            var courses = await db.Courses.ToListAsync();
+
+            return mapper.Map<List<CourseDto>>(courses);
         })
         .WithName("GetAllCourses")
         .WithOpenApi()
-        .Produces<List<Course>>(StatusCodes.Status200OK);
+        .Produces<List<CourseDto>>();
 
-        group.MapGet("/{id}", async (int id, StudentDbContext db) =>
+        group.MapGet("/{id}", async (int id, StudentDbContext db, IMapper mapper) =>
         {
             return await db.Courses.AsNoTracking()
-                .FirstOrDefaultAsync(model => model.Id == id)
-                is Course model
-                    ? Results.Ok(model)
+                .FirstOrDefaultAsync(course => course.Id == id)
+                is Course course
+                    ? Results.Ok(mapper.Map<CourseDto>(course))
                     : Results.NotFound();
         })
         .WithName("GetCourseById")
         .WithOpenApi()
-        .Produces<Course>(StatusCodes.Status200OK)
+        .Produces<CourseDto>()
         .Produces(StatusCodes.Status404NotFound);
 
-        group.MapPost("/", async (Course course, StudentDbContext db) =>
+        group.MapPost("/", async (CourseCreateDto courseDto, StudentDbContext db, IMapper mapper) =>
             {
+                var course = mapper.Map<Course>(courseDto);
                 db.Courses.Add(course);
                 await db.SaveChangesAsync();
                 return Results.Created($"/api/Course/{course.Id}", course);
@@ -40,20 +45,16 @@ public static class CourseEndpoints
             .WithOpenApi()
             .Produces<Course>(StatusCodes.Status201Created);
 
-        group.MapPut("/{id}", async (int id, Course course, StudentDbContext db) =>
+        group.MapPut("/{id}", async (int id, CourseCreateDto course, StudentDbContext db) =>
         {
             var affected = await db.Courses
-                .Where(model => model.Id == id)
+                .Where(course => course.Id == id)
                 .ExecuteUpdateAsync(setters => setters
                     .SetProperty(m => m.Title, course.Title)
                     .SetProperty(m => m.Credits, course.Credits)
-                    .SetProperty(m => m.Id, course.Id)
-                    .SetProperty(m => m.Created, course.Created)
-                    .SetProperty(m => m.CreatedBy, course.CreatedBy)
-                    .SetProperty(m => m.Modified, course.Modified)
-                    .SetProperty(m => m.ModifiedBy, course.ModifiedBy)
+                    .SetProperty(m => m.Modified, DateTime.Now)
                     );
-            return affected == 1 ? Results.Ok() : Results.NotFound();
+            return affected == 1 ? Results.Ok(course) : Results.NotFound();
         })
         .WithName("UpdateCourse")
         .WithOpenApi()
@@ -63,13 +64,13 @@ public static class CourseEndpoints
         group.MapDelete("/{id}", async (int id, StudentDbContext db) =>
         {
             var affected = await db.Courses
-                .Where(model => model.Id == id)
+                .Where(course => course.Id == id)
                 .ExecuteDeleteAsync();
-            return affected == 1 ? Results.Ok() : Results.NotFound();
+            return affected == 1 ? Results.Ok($"Successfully deleted course with id: {id}") : Results.NotFound();
         })
         .WithName("DeleteCourse")
         .WithOpenApi()
-        .Produces<Course>(StatusCodes.Status200OK)
+        .Produces<Course>()
         .Produces(StatusCodes.Status404NotFound);
     }
 }
